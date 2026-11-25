@@ -1,0 +1,382 @@
+{
+  "entities": {
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Public dating and language-exchange profile without PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "age": {
+          "type": "number"
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["homme", "femme"]
+        },
+        "lookingFor": {
+          "type": "string",
+          "enum": ["femmes", "hommes", "tous"]
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "job": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "englishLevel": {
+          "type": "string",
+          "enum": [
+            "Débutant (A1–A2)",
+            "Intermédiaire (B1–B2)",
+            "Avancé (C1–C2)",
+            "Natif / Bilingue"
+          ]
+        },
+        "interests": {
+          "type": "array"
+        },
+        "bio": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "nativeLanguage": {
+          "type": "string",
+          "enum": ["fr", "en"]
+        },
+        "photoDataUrl": {
+          "type": "string",
+          "maxLength": 350000
+        },
+        "voiceSettings": {
+          "type": "object",
+          "properties": {
+            "enVoice": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "frVoice": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "autoPlay": {
+              "type": "boolean"
+            }
+          },
+          "required": ["enVoice", "frVoice", "autoPlay"]
+        },
+        "isPublished": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "firstName",
+        "age",
+        "gender",
+        "lookingFor",
+        "city",
+        "job",
+        "englishLevel",
+        "interests",
+        "bio",
+        "nativeLanguage",
+        "photoDataUrl",
+        "voiceSettings",
+        "isPublished",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Private account record isolating PII such as email.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "User like toward another member or AI practice partner.",
+      "type": "object",
+      "properties": {
+        "fromUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "toUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["fromUid", "toUid", "createdAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "1-on-1 conversation between two members or a member and an AI partner.",
+      "type": "object",
+      "properties": {
+        "participantA": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "participantB": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "participantIds": {
+          "type": "array"
+        },
+        "isAiPartner": {
+          "type": "boolean"
+        },
+        "aiPartnerId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "aiResponseMode": {
+          "type": "string",
+          "enum": ["en", "fr", "mix"]
+        },
+        "lastMessagePreviewEn": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "lastMessagePreviewFr": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "lastSenderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "participantA",
+        "participantB",
+        "participantIds",
+        "isAiPartner",
+        "aiPartnerId",
+        "aiResponseMode",
+        "lastMessagePreviewEn",
+        "lastMessagePreviewFr",
+        "lastSenderId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Bilingual message containing both French and English versions plus learning metadata.",
+      "type": "object",
+      "properties": {
+        "senderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderType": {
+          "type": "string",
+          "enum": ["user", "ai"]
+        },
+        "originalLang": {
+          "type": "string",
+          "enum": ["fr", "en", "mix"]
+        },
+        "originalText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "textFr": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2500
+        },
+        "textEn": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2500
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "keyExpression": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "keyExpressionMeaning": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "keyExpressionExample": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "senderId",
+        "senderType",
+        "originalLang",
+        "originalText",
+        "textFr",
+        "textEn",
+        "note",
+        "keyExpression",
+        "keyExpressionMeaning",
+        "keyExpressionExample",
+        "createdAt"
+      ]
+    },
+    "VocabEntry": {
+      "title": "VocabEntry",
+      "description": "Saved vocabulary expression in a user's personal notebook.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "expression": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "translation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "example": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "lang": {
+          "type": "string",
+          "enum": ["en", "fr"]
+        },
+        "sourcePartnerName": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "status": {
+          "type": "string",
+          "enum": ["to_review", "mastered"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "expression",
+        "translation",
+        "note",
+        "example",
+        "lang",
+        "sourcePartnerName",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Public dating and language-exchange profiles without PII."
+    },
+    "/userPrivate/{userId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Isolated private user PII (email)."
+    },
+    "/userPrivate/{userId}/vocab/{entryId}": {
+      "schema": { "$ref": "#/entities/VocabEntry" },
+      "description": "Personal vocabulary notebook entries owned by userId."
+    },
+    "/likes/{likeId}": {
+      "schema": { "$ref": "#/entities/Like" },
+      "description": "Likes between members and toward AI practice partners."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "1-on-1 conversations between members or with an AI practice partner."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Bilingual messages inside a conversation."
+    }
+  }
+}

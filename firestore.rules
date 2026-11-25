@@ -1,0 +1,337 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedSignedIn() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidVoiceSettings(vs) {
+      return vs is map
+        && vs.keys().hasAll(['enVoice', 'frVoice', 'autoPlay'])
+        && vs.keys().hasOnly(['enVoice', 'frVoice', 'autoPlay'])
+        && vs.enVoice is string && vs.enVoice.size() <= 120
+        && vs.frVoice is string && vs.frVoice.size() <= 120
+        && vs.autoPlay is bool;
+    }
+
+    function isValidPublicProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'firstName', 'age', 'gender', 'lookingFor', 'city', 'job',
+          'englishLevel', 'interests', 'bio', 'nativeLanguage', 'photoDataUrl',
+          'voiceSettings', 'isPublished', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'firstName', 'age', 'gender', 'lookingFor', 'city', 'job',
+          'englishLevel', 'interests', 'bio', 'nativeLanguage', 'photoDataUrl',
+          'voiceSettings', 'isPublished', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.firstName is string && data.firstName.size() >= 1 && data.firstName.size() <= 50
+        && data.age is number && data.age >= 18 && data.age <= 99
+        && data.gender in ['homme', 'femme']
+        && data.lookingFor in ['femmes', 'hommes', 'tous']
+        && data.city is string && data.city.size() >= 1 && data.city.size() <= 80
+        && data.job is string && data.job.size() <= 80
+        && data.englishLevel in [
+          'Débutant (A1–A2)',
+          'Intermédiaire (B1–B2)',
+          'Avancé (C1–C2)',
+          'Natif / Bilingue'
+        ]
+        && data.interests is list && data.interests.size() <= 8
+        && (data.interests.size() == 0 || (data.interests[0] is string && data.interests[0].size() <= 40))
+        && data.bio is string && data.bio.size() <= 500
+        && data.nativeLanguage in ['fr', 'en']
+        && data.photoDataUrl is string && data.photoDataUrl.size() <= 350000
+        && isValidVoiceSettings(data.voiceSettings)
+        && data.isPublished is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivate(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'updatedAt'])
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() <= 200
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidVocabEntry(data) {
+      return data.keys().hasAll([
+          'ownerId', 'expression', 'translation', 'note', 'example',
+          'lang', 'sourcePartnerName', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'expression', 'translation', 'note', 'example',
+          'lang', 'sourcePartnerName', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId == request.auth.uid
+        && data.expression is string && data.expression.size() >= 1 && data.expression.size() <= 200
+        && data.translation is string && data.translation.size() >= 1 && data.translation.size() <= 300
+        && data.note is string && data.note.size() <= 500
+        && data.example is string && data.example.size() <= 400
+        && data.lang in ['en', 'fr']
+        && data.sourcePartnerName is string && data.sourcePartnerName.size() <= 60
+        && data.status in ['to_review', 'mastered']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLike(data) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'createdAt'])
+        && data.keys().hasOnly(['fromUid', 'toUid', 'createdAt'])
+        && isValidId(data.fromUid)
+        && isValidId(data.toUid)
+        && data.fromUid == request.auth.uid
+        && data.fromUid != data.toUid
+        && data.createdAt is timestamp;
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll([
+          'participantA', 'participantB', 'participantIds', 'isAiPartner',
+          'aiPartnerId', 'aiResponseMode', 'lastMessagePreviewEn',
+          'lastMessagePreviewFr', 'lastSenderId', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'participantA', 'participantB', 'participantIds', 'isAiPartner',
+          'aiPartnerId', 'aiResponseMode', 'lastMessagePreviewEn',
+          'lastMessagePreviewFr', 'lastSenderId', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.participantA)
+        && isValidId(data.participantB)
+        && data.participantA != data.participantB
+        && data.participantIds is list
+        && data.participantIds.size() == 2
+        && data.participantIds[0] == data.participantA
+        && data.participantIds[1] == data.participantB
+        && data.isAiPartner is bool
+        && data.aiPartnerId is string && data.aiPartnerId.size() <= 128
+        && (
+          (data.isAiPartner == false && data.aiPartnerId == '') ||
+          (data.isAiPartner == true && data.aiPartnerId == data.participantB && isValidId(data.aiPartnerId))
+        )
+        && data.aiResponseMode in ['en', 'fr', 'mix']
+        && data.lastMessagePreviewEn is string && data.lastMessagePreviewEn.size() <= 300
+        && data.lastMessagePreviewFr is string && data.lastMessagePreviewFr.size() <= 300
+        && data.lastSenderId is string && data.lastSenderId.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll([
+          'participantIds', 'senderId', 'senderType', 'originalLang',
+          'originalText', 'textFr', 'textEn', 'note', 'keyExpression',
+          'keyExpressionMeaning', 'keyExpressionExample', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'participantIds', 'senderId', 'senderType', 'originalLang',
+          'originalText', 'textFr', 'textEn', 'note', 'keyExpression',
+          'keyExpressionMeaning', 'keyExpressionExample', 'createdAt'
+        ])
+        && data.participantIds is list && data.participantIds.size() == 2
+        && isValidId(data.senderId)
+        && data.senderType in ['user', 'ai']
+        && data.originalLang in ['fr', 'en', 'mix']
+        && data.originalText is string && data.originalText.size() >= 1 && data.originalText.size() <= 2000
+        && data.textFr is string && data.textFr.size() >= 1 && data.textFr.size() <= 2500
+        && data.textEn is string && data.textEn.size() >= 1 && data.textEn.size() <= 2500
+        && data.note is string && data.note.size() <= 600
+        && data.keyExpression is string && data.keyExpression.size() <= 200
+        && data.keyExpressionMeaning is string && data.keyExpressionMeaning.size() <= 300
+        && data.keyExpressionExample is string && data.keyExpressionExample.size() <= 400
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMessageCreate(conversationId, data) {
+      let parent = get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+      return request.auth.uid in parent.participantIds
+        && data.participantIds == parent.participantIds
+        && (
+          (data.senderType == 'user' && data.senderId == request.auth.uid) ||
+          (data.senderType == 'ai' && parent.isAiPartner == true && data.senderId == parent.aiPartnerId && request.auth.uid == parent.participantA)
+        );
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Public Profiles (No PII)
+    match /profiles/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (userId == request.auth.uid || (resource != null && existing().isPublished == true));
+      allow list: if isSignedIn() && (resource.data.isPublished == true || resource.data.uid == request.auth.uid);
+
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidPublicProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidPublicProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'firstName', 'age', 'gender', 'lookingFor', 'city', 'job',
+            'englishLevel', 'interests', 'bio', 'nativeLanguage', 'photoDataUrl',
+            'voiceSettings', 'isPublished', 'updatedAt'
+          ]) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['voiceSettings', 'updatedAt'])
+        );
+
+      allow delete: if isVerifiedOwner(userId) && isValidId(userId);
+    }
+
+    // 2. Private User PII & Personal Vocabulary Notebook
+    match /userPrivate/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserPrivate(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserPrivate(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt']);
+      allow delete: if false;
+
+      match /vocab/{entryId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(entryId);
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(entryId)
+          && isValidVocabEntry(incoming())
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(entryId)
+          && isValidVocabEntry(incoming())
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'note', 'example', 'updatedAt']);
+        allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(entryId);
+      }
+    }
+
+    // 3. Likes
+    match /likes/{likeId} {
+      allow get: if isSignedIn() && isValidId(likeId) && (
+        resource == null ||
+        existing().fromUid == request.auth.uid ||
+        existing().toUid == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        resource.data.fromUid == request.auth.uid ||
+        resource.data.toUid == request.auth.uid
+      );
+      allow create: if isVerifiedSignedIn()
+        && isValidId(likeId)
+        && isValidLike(incoming())
+        && likeId == (request.auth.uid + '_' + incoming().toUid)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedSignedIn() && isValidId(likeId) && existing().fromUid == request.auth.uid;
+    }
+
+    // 4. Conversations & Messages
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) && (
+        resource == null || request.auth.uid in existing().participantIds
+      );
+      allow list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+
+      allow create: if isVerifiedSignedIn()
+        && isValidId(conversationId)
+        && isValidConversation(incoming())
+        && request.auth.uid in incoming().participantIds
+        && conversationId == (incoming().participantA + '_' + incoming().participantB)
+        && (incoming().isAiPartner == false || incoming().participantA == request.auth.uid)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedSignedIn()
+        && isValidId(conversationId)
+        && isValidConversation(incoming())
+        && request.auth.uid in existing().participantIds
+        && incoming().participantA == existing().participantA
+        && incoming().participantB == existing().participantB
+        && incoming().participantIds == existing().participantIds
+        && incoming().isAiPartner == existing().isAiPartner
+        && incoming().aiPartnerId == existing().aiPartnerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'lastMessagePreviewEn', 'lastMessagePreviewFr', 'lastSenderId', 'updatedAt'
+          ]) ||
+          (existing().isAiPartner == true && incoming().diff(existing()).affectedKeys().hasOnly(['aiResponseMode', 'updatedAt']))
+        );
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn()
+          && isValidId(conversationId)
+          && isValidId(messageId)
+          && request.auth.uid in existing().participantIds
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+
+        allow list: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+
+        allow create: if isVerifiedSignedIn()
+          && isValidId(conversationId)
+          && isValidId(messageId)
+          && isValidMessage(incoming())
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/conversations/$(conversationId))
+          && isValidMessageCreate(conversationId, incoming());
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "EntreDeux",
+  "description": "Application de rencontre et d'apprentissage des langues : apprends l'anglais en flirtant ou en te faisant des amis.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
